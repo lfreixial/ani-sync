@@ -13,8 +13,9 @@ import (
 )
 
 // unsafePathChars cannot appear in paths passed through ani-cli, which splits
-// player flags on whitespace and selects players by glob.
-const unsafePathChars = " \t\r\n*?["
+// player flags on whitespace and selects players by glob; mpv splits path lists
+// such as --cover-art-files on ':'.
+const unsafePathChars = " \t\r\n*?[:"
 
 const AutoFallback = "Automatic sync is unavailable: ani-cli has no documented source/episode identity handoff. Manual completion confirmation is required."
 

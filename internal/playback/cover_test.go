@@ -30,7 +30,7 @@ func TestCoverDownloadsOnce(t *testing.T) {
 	srv, dir := withCoverServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		hits++
 		w.Header().Set("Content-Type", "image/jpeg")
-		_, _ = w.Write([]byte("jpeg"))
+		_, _ = w.Write([]byte("\xff\xd8\xff\xe0jpeg"))
 	})
 	for range 2 {
 		if got := Cover(context.Background(), 5114, srv.URL+"/cover.jpg"); got != filepath.Join(dir, "5114.jpg") {
@@ -54,6 +54,58 @@ func TestCoverRejectsUnsafeSources(t *testing.T) {
 	}
 	if got := Cover(context.Background(), 0, srv.URL+"/x.jpg"); got != "" {
 		t.Fatalf("invalid media id accepted: %q", got)
+	}
+}
+
+func TestCoverRejectsMislabelledContent(t *testing.T) {
+	srv, _ := withCoverServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write([]byte("<html>not a png</html>"))
+	})
+	if got := Cover(context.Background(), 7, srv.URL+"/cover.png"); got != "" {
+		t.Fatalf("mislabelled content accepted as %q", got)
+	}
+}
+
+func TestCoverRejectsSharedCacheDirectory(t *testing.T) {
+	srv, dir := withCoverServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "image/jpeg")
+		_, _ = w.Write([]byte("\xff\xd8\xff\xe0jpeg"))
+	})
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0777); err != nil {
+		t.Fatal(err)
+	}
+	if got := Cover(context.Background(), 8, srv.URL+"/cover.jpg"); got != "" {
+		t.Fatalf("world-writable cache accepted: %q", got)
+	}
+	// A cover planted in a shared cache is not reused either.
+	if err := os.WriteFile(filepath.Join(dir, "9.jpg"), []byte("\xff\xd8\xff"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if got := Cover(context.Background(), 9, srv.URL+"/cover.jpg"); got != "" {
+		t.Fatalf("cached cover in shared directory reused: %q", got)
+	}
+}
+
+func TestIsImage(t *testing.T) {
+	cases := []struct {
+		ext, data string
+		want      bool
+	}{
+		{".jpg", "\xff\xd8\xff\xe0", true},
+		{".png", "\x89PNG\r\n\x1a\n", true},
+		{".webp", "RIFF\x00\x00\x00\x00WEBPVP8 ", true},
+		{".jpg", "\x89PNG\r\n\x1a\n", false},
+		{".webp", "RIFF\x00\x00\x00\x00AVI ", false},
+		{".gif", "GIF89a", false},
+	}
+	for _, c := range cases {
+		if got := isImage([]byte(c.data), c.ext); got != c.want {
+			t.Errorf("isImage(%q, %q) = %v", c.data, c.ext, got)
+		}
 	}
 }
 
@@ -102,7 +154,11 @@ func TestLaunchPassesCoverToMPV(t *testing.T) {
 	if got := flags(cover); got != base+" --vid=1 --cover-art-files="+cover {
 		t.Fatalf("with cover: %q", got)
 	}
-	for _, bad := range []string{"", filepath.Join(dir, "missing.jpg"), filepath.Join(dir, "a b.jpg")} {
+	colon := filepath.Join(dir, "a:b.jpg")
+	if err := os.WriteFile(colon, []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{"", filepath.Join(dir, "missing.jpg"), filepath.Join(dir, "a b.jpg"), colon} {
 		if got := flags(bad); got != base {
 			t.Fatalf("cover %q: %q", bad, got)
 		}

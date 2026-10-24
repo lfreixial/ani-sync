@@ -1,6 +1,7 @@
 package playback
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -46,6 +47,9 @@ func cover(ctx context.Context, mediaID int, coverURL string) (string, error) {
 	if strings.ContainsAny(dir, unsafePathChars) {
 		return "", errors.New("cache path is unsafe for ani-cli player flags")
 	}
+	if _, err := os.Lstat(dir); err == nil && !privateDir(dir) {
+		return "", errors.New("cover cache directory is not private")
+	}
 	for _, ext := range []string{".jpg", ".png", ".webp"} {
 		if p := filepath.Join(dir, fmt.Sprintf("%d%s", mediaID, ext)); regularFile(p) {
 			return p, nil
@@ -70,8 +74,14 @@ func cover(ctx context.Context, mediaID int, coverURL string) (string, error) {
 	if err != nil || len(data) == 0 || len(data) > maxCoverBytes {
 		return "", errors.New("cover image is empty or too large")
 	}
+	if !isImage(data, ext) {
+		return "", errors.New("cover content does not match its image type")
+	}
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return "", err
+	}
+	if !privateDir(dir) {
+		return "", errors.New("cover cache directory is not private")
 	}
 	tmp, err := os.CreateTemp(dir, ".cover-*")
 	if err != nil {
@@ -87,6 +97,25 @@ func cover(ctx context.Context, mediaID int, coverURL string) (string, error) {
 	}
 	path := filepath.Join(dir, fmt.Sprintf("%d%s", mediaID, ext))
 	return path, os.Rename(tmp.Name(), path)
+}
+
+// isImage checks the file signature, so a mislabelled response is never handed to mpv.
+func isImage(data []byte, ext string) bool {
+	switch ext {
+	case ".jpg":
+		return bytes.HasPrefix(data, []byte{0xff, 0xd8, 0xff})
+	case ".png":
+		return bytes.HasPrefix(data, []byte("\x89PNG\r\n\x1a\n"))
+	case ".webp":
+		return len(data) >= 12 && bytes.HasPrefix(data, []byte("RIFF")) && string(data[8:12]) == "WEBP"
+	}
+	return false
+}
+
+// privateDir reports whether dir is a real directory that other users cannot write to.
+func privateDir(dir string) bool {
+	st, err := os.Lstat(dir)
+	return err == nil && st.IsDir() && st.Mode().Perm()&0022 == 0
 }
 
 func regularFile(path string) bool {
