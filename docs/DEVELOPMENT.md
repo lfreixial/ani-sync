@@ -39,7 +39,7 @@ checker into this checkout only:
 mkdir -p .tools .cache/go-build .cache/go-mod .cache/tmp
 GOBIN="$PWD/.tools" GOCACHE="$PWD/.cache/go-build" \
   GOMODCACHE="$PWD/.cache/go-mod" GOTMPDIR="$PWD/.cache/tmp" \
-  go install golang.org/x/vuln/cmd/govulncheck@latest
+  go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
 make vuln
 ```
 
@@ -48,6 +48,18 @@ ani-sync. It needs network access for installation and the vulnerability databas
 Run it again whenever the Go toolchain changes. No third-party Go runtime
 dependency does **not** mean the standard library or playback dependencies have
 no vulnerabilities.
+
+CI and these instructions pin govulncheck v1.9.0, whose
+[module dependencies](https://github.com/golang/vuln/blob/v1.9.0/go.mod) include
+x/tools v0.52.0. The original v1.1.4 pin included x/tools v0.29.0; the first
+reported CI scan on Go 1.27.3 crashed inside that older SSA analyzer with
+`panic: unexpected expr: *ast.KeyValueExpr`. This was a scanner failure and
+produced no completed vulnerability assessment. Updating the scanner preserves
+the full `govulncheck ./...` check and its failure exit status. CI records the
+scanner build information so future toolchain mismatches are visible in logs.
+
+The updated scanner could not be downloaded in the development sandbox, so its
+successful installation and scan must still be verified by the next CI run.
 
 ## Development phases
 

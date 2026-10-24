@@ -53,5 +53,9 @@ jobs:
       - name: Install pinned official vulnerability checker
         run: |
           mkdir -p .tools
-          GOBIN="$PWD/.tools" go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+          GOBIN="$PWD/.tools" go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+      - name: Record Go and scanner versions
+        run: |
+          go version
+          go version -m .tools/govulncheck
       - run: make vuln

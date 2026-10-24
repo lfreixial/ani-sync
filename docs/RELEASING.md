@@ -41,5 +41,5 @@ CI actions are pinned to full commit IDs verified from the official
 [checkout v7.0.1 release](https://github.com/actions/checkout/releases/tag/v7.0.1)
 and [setup-go v7.0.0 release](https://github.com/actions/setup-go/releases/tag/v7.0.0).
 Dependabot proposes action updates. The official checker is pinned to
-[golang/vuln v1.1.4](https://github.com/golang/vuln/releases/tag/v1.1.4); review and
+[golang/vuln v1.9.0](https://pkg.go.dev/golang.org/x/vuln@v1.9.0/cmd/govulncheck); review and
 update that tool version explicitly as needed.
