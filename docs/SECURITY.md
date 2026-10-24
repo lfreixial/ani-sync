@@ -82,6 +82,12 @@ does not claim to sandbox other applications with the same UID.
   An installed mpv-mpris plugin is explicitly loaded from supported system paths
   after resolving symlinks and checking ownership, permissions and path safety.
   It exposes playback metadata and controls on the local session D-Bus.
+  With the plugin loaded, the anime's AniList cover is passed as artwork
+  (`--cover-art-files`, with `--vid=1` so the episode stays the shown track).
+  The cover is fetched without credentials, over https from `anilist.co` hosts
+  only, with no redirects, a 10 s timeout and a 5 MiB limit, and only `image/*`
+  responses are accepted. It is cached in `$XDG_CACHE_HOME/ani-sync/covers/`, in
+  a directory created with mode 0700. Any failure plays without artwork.
 - Children inherit ordinary stdin/out/err only, not token or lock descriptors.
   Ctrl-C and cancellation prevent progress updates. Context cancellation kills
   the process group; foreground terminal ownership is restored after subprocess

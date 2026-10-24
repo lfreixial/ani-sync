@@ -61,10 +61,14 @@ func (t Title) Preferred(language string) string {
 }
 
 type Media struct {
-	ID       int      `json:"id"`
-	Title    Title    `json:"title"`
-	Episodes int      `json:"episodes"`
-	Synonyms []string `json:"synonyms"`
+	ID         int        `json:"id"`
+	Title      Title      `json:"title"`
+	Episodes   int        `json:"episodes"`
+	Synonyms   []string   `json:"synonyms"`
+	CoverImage CoverImage `json:"coverImage"`
+}
+type CoverImage struct {
+	Large string `json:"large"`
 }
 type Entry struct {
 	ID       int    `json:"id"`
@@ -223,7 +227,7 @@ func do[V, D any](ctx context.Context, c *Client, q string, v V, out *D) error {
 	return errors.New("AniList rate limit persisted; retry later")
 }
 
-const mediaFields = `id title { english romaji native } episodes synonyms`
+const mediaFields = `id title { english romaji native } episodes synonyms coverImage { large }`
 const entryFields = `id progress status media { ` + mediaFields + ` }`
 
 func (c *Client) Viewer(ctx context.Context) (User, error) {
