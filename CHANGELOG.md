@@ -9,6 +9,8 @@
 - Unfiltered watchlists omit the status argument instead of sending null, fixing
   empty selections in `watch` when status-specific lists contain anime.
 - Interactive selection and ani-cli foreground playback with confirmed aliases.
+- Restore terminal ownership after child processes without SIGTTOU suspension;
+  cover success, failure and cancellation with pseudo-terminal regression tests.
 - Explicit completion confirmation and durable, account-bound progress updates.
 - JSON output, configuration commands, diagnostics and installation targets.
 - Mock HTTP and subprocess tests, race checks and GitHub CI configuration.

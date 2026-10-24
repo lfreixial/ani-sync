@@ -179,6 +179,11 @@ or environment. See the [complete network inventory](docs/SECURITY.md#network-co
 
 ## Troubleshooting
 
+- **Another command is running:** finish or cancel the first command in its
+  original terminal. If `jobs -l` shows a suspended ani-sync job, resume it with
+  `fg %N` (replace N with its job number), then press Ctrl+C to cancel. Rebuild
+  and reinstall if using a version that suspends after the anime selector.
+  Do not delete the lock file: the lock is released when the process exits.
 - **Not logged in / unauthorized:** run `login`; check client ID and exact redirect
   URI. A denied, expired or revoked token is never refreshed silently.
 - **Browser reports `unsupported_grant_type`:** rebuild and reinstall the current
