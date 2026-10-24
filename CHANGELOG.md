@@ -3,6 +3,8 @@
 ## Unreleased — initial public preview
 
 - AniList implicit OAuth with verified state and private local token storage.
+- Authorization URLs use AniList's registered redirect instead of an explicit
+  override, matching the documented implicit flow.
 - Typed GraphQL watchlists, catalog search, pagination and bounded rate retries.
 - Interactive selection and ani-cli foreground playback with confirmed aliases.
 - Explicit completion confirmation and durable, account-bound progress updates.

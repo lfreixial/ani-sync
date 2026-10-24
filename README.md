@@ -37,6 +37,8 @@ ani-sync ./cmd/ani-sync` for the direct equivalent.
 1. Open [AniList developer settings](https://anilist.co/settings/developer) in
    your browser and create an application.
 2. Set its redirect URL **exactly** to `http://127.0.0.1:8765/callback`.
+   AniList uses this saved setting; ani-sync does not send a redirect override
+   in the implicit authorization URL.
 3. Copy its public **client ID**, then run:
 
    ```sh
@@ -179,6 +181,10 @@ or environment. See the [complete network inventory](docs/SECURITY.md#network-co
 
 - **Not logged in / unauthorized:** run `login`; check client ID and exact redirect
   URI. A denied, expired or revoked token is never refreshed silently.
+- **Browser reports `unsupported_grant_type`:** rebuild and reinstall the current
+  version, cancel the previous login, then run `login` again and open the complete
+  new URL. It must use `/api/v2/oauth/authorize` with `response_type=token` and no
+  `redirect_uri` override. Check the saved redirect in AniList developer settings.
 - **Callback fails:** use a local browser, allow loopback, and free port 8765.
   State, origin and host must match. Never work around failure by pasting a token.
 - **No list match:** try Romaji/native titles or `watch --id ID`; add missing anime

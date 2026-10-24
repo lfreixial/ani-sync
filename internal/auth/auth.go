@@ -75,7 +75,9 @@ func newReceiver(host string) (*receiver, error) {
 }
 
 func (r *receiver) authorizationURL(clientID string) string {
-	q := url.Values{"client_id": {clientID}, "response_type": {"token"}, "redirect_uri": {"http://" + r.host + "/callback"}, "state": {r.state}}
+	// AniList's implicit flow uses the redirect registered in the application
+	// settings. Match its documented request instead of sending redirect_uri.
+	q := url.Values{"client_id": {clientID}, "response_type": {"token"}, "state": {r.state}}
 	return "https://anilist.co/api/v2/oauth/authorize?" + q.Encode()
 }
 
