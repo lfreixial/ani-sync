@@ -47,6 +47,7 @@ func TestLaunchWithFakeInstalledPrograms(t *testing.T) {
 		}
 	}
 	t.Setenv("PATH", dir)
+	withMPRISPlugins(t, nil)
 	t.Setenv("ANILIST_TOKEN", "do-not-forward")
 	t.Setenv("ANI_CLI_PLAYER_FLAGS", "bad-flags")
 	var out bytes.Buffer
@@ -172,5 +173,39 @@ func TestUnsafeExecutableAndEnvironment(t *testing.T) {
 				t.Fatal(v)
 			}
 		}
+	}
+}
+
+func withMPRISPlugins(t *testing.T, paths []string) {
+	old := mprisPlugins
+	mprisPlugins = paths
+	t.Cleanup(func() { mprisPlugins = old })
+}
+
+func TestMPRISPlugin(t *testing.T) {
+	dir := t.TempDir()
+	plugin := filepath.Join(dir, "mpris.so")
+	if err := os.WriteFile(plugin, []byte("so"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	spaced := filepath.Join(dir, "with space.so")
+	if err := os.WriteFile(spaced, []byte("so"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	writable := filepath.Join(dir, "writable.so")
+	if err := os.WriteFile(writable, []byte("so"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(writable, 0666); err != nil {
+		t.Fatal(err)
+	}
+
+	withMPRISPlugins(t, []string{filepath.Join(dir, "missing.so"), spaced, writable, plugin})
+	if got := MPRISPlugin(); got != plugin {
+		t.Fatalf("want %q, got %q", plugin, got)
+	}
+	withMPRISPlugins(t, []string{spaced, writable})
+	if got := MPRISPlugin(); got != "" {
+		t.Fatalf("unsafe plugin accepted: %q", got)
 	}
 }

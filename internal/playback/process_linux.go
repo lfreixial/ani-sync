@@ -40,6 +40,33 @@ func TrustedPath(name string) (string, error) {
 	return path, nil
 }
 
+// mprisPlugins are where distributions install the mpv-mpris plugin.
+var mprisPlugins = []string{
+	"/usr/lib/mpv-mpris/mpris.so",
+	"/usr/lib/x86_64-linux-gnu/mpv-mpris/mpris.so",
+	"/usr/lib/aarch64-linux-gnu/mpv-mpris/mpris.so",
+	"/usr/lib64/mpv-mpris/mpris.so",
+	"/etc/mpv/scripts/mpris.so",
+}
+
+// MPRISPlugin returns the installed mpv-mpris plugin, or "" if there is none.
+// It is held to the same ownership rules as executables, since mpv runs it.
+func MPRISPlugin() string {
+	for _, p := range mprisPlugins {
+		p, err := filepath.EvalSymlinks(p)
+		// ani-cli splits player flags on whitespace.
+		if err != nil || strings.ContainsAny(p, " \t\r\n*?[") {
+			continue
+		}
+		st, err := os.Stat(p)
+		if err != nil || !st.Mode().IsRegular() || checkOwnership(p) != nil {
+			continue
+		}
+		return p
+	}
+	return ""
+}
+
 func checkOwnership(path string) error {
 	root, err := os.Stat("/")
 	if err != nil {

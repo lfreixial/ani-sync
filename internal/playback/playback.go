@@ -62,6 +62,12 @@ func Launch(ctx context.Context, query string, episode int, streams Streams) err
 	// Keep HLS manifests in the media demuxer instead of expanding their segments
 	// as playlist entries. Use a predictable mpv configuration with visible errors.
 	// These are fixed flags; no user-supplied shell text is forwarded to ani-cli.
-	env := append(Environment(), "ANI_CLI_PLAYER="+mpv, "ANI_CLI_PLAYER_FLAGS=--no-config --demuxer=lavf --terminal=yes", "ANI_CLI_MENU=fzf", "ANI_CLI_MENU_FLAGS=", "ANI_CLI_LOG=0", "ANI_CLI_SKIP_INTRO=0", "ANI_CLI_DEFAULT_SOURCE=search")
+	flags := "--no-config --demuxer=lavf --terminal=yes"
+	// --no-config also skips system scripts, so load mpv-mpris explicitly; desktop
+	// media controls can then see and control what is playing.
+	if plugin := MPRISPlugin(); plugin != "" {
+		flags += " --script=" + plugin
+	}
+	env := append(Environment(), "ANI_CLI_PLAYER="+mpv, "ANI_CLI_PLAYER_FLAGS="+flags, "ANI_CLI_MENU=fzf", "ANI_CLI_MENU_FLAGS=", "ANI_CLI_LOG=0", "ANI_CLI_SKIP_INTRO=0", "ANI_CLI_DEFAULT_SOURCE=search")
 	return Run(ctx, ani, args, env, streams)
 }
