@@ -245,12 +245,17 @@ func (c *Client) List(ctx context.Context, user int, status Status) ([]Entry, er
 	type vars struct {
 		User   int     `json:"user"`
 		Page   int     `json:"page"`
-		Status *Status `json:"status"`
+		Status *Status `json:"status,omitempty"`
 	}
 	var filter *Status
+	var statusVariable, statusArgument string
 	if status != "" {
 		filter = &status
+		statusVariable = ",$status:MediaListStatus"
+		statusArgument = ",status:$status"
 	}
+	// An absent filter must not become an explicit null status in GraphQL.
+	query := `query($user:Int!,$page:Int!` + statusVariable + `){Page(page:$page,perPage:50){pageInfo{hasNextPage} mediaList(userId:$user,type:ANIME` + statusArgument + `,sort:MEDIA_ID){` + entryFields + `}}}`
 	entries := []Entry{}
 	seen := map[int]bool{}
 	for page := 1; page <= 100; page++ {
@@ -260,7 +265,7 @@ func (c *Client) List(ctx context.Context, user int, status Status) ([]Entry, er
 				MediaList []Entry   `json:"mediaList"`
 			}
 		}
-		err := do(ctx, c, `query($user:Int!,$page:Int!,$status:MediaListStatus){Page(page:$page,perPage:50){pageInfo{hasNextPage} mediaList(userId:$user,type:ANIME,status:$status,sort:MEDIA_ID){`+entryFields+`}}}`, vars{user, page, filter}, &d)
+		err := do(ctx, c, query, vars{user, page, filter}, &d)
 		if err != nil {
 			return nil, err
 		}

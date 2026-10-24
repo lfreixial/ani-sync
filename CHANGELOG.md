@@ -6,6 +6,8 @@
 - Authorization URLs use AniList's registered redirect instead of an explicit
   override, matching the documented implicit flow.
 - Typed GraphQL watchlists, catalog search, pagination and bounded rate retries.
+- Unfiltered watchlists omit the status argument instead of sending null, fixing
+  empty selections in `watch` when status-specific lists contain anime.
 - Interactive selection and ani-cli foreground playback with confirmed aliases.
 - Explicit completion confirmation and durable, account-bound progress updates.
 - JSON output, configuration commands, diagnostics and installation targets.

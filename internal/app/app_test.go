@@ -51,7 +51,10 @@ func newHarness(t *testing.T) *harness {
 	client := testutil.HTTPClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Query     string
-			Variables struct{ Progress int }
+			Variables struct {
+				Progress int
+				Status   json.RawMessage
+			}
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Error(err)
@@ -65,6 +68,11 @@ func newHarness(t *testing.T) *harness {
 			fmt.Fprintf(w, `{"data":{"SaveMediaListEntry":{"id":7,"progress":%d}}}`, h.watched)
 		case strings.Contains(req.Query, "Page"):
 			if strings.Contains(req.Query, "mediaList") {
+				// Explicit null is a filter value, not an unfiltered list.
+				if string(req.Variables.Status) == "null" {
+					fmt.Fprint(w, `{"data":{"Page":{"pageInfo":{"hasNextPage":false},"mediaList":[]}}}`)
+					return
+				}
 				fmt.Fprintf(w, `{"data":{"Page":{"pageInfo":{"hasNextPage":false},"mediaList":[{"id":7,"progress":%d,"status":"CURRENT","media":{"id":9,"title":{"english":"Frieren","romaji":"Sousou"},"episodes":12}}]}}}`, h.watched)
 			} else {
 				fmt.Fprint(w, `{"data":{"Page":{"pageInfo":{"hasNextPage":false},"media":[{"id":9,"title":{"english":"Frieren"},"episodes":12}]}}}`)
@@ -119,6 +127,19 @@ func TestWatchManualConfirmation(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestWatchWithoutArguments(t *testing.T) {
+	h := newHarness(t)
+	h.app.UI.Interactive = true
+	// Accept the next episode and source title, then decline completion.
+	h.app.UI.In = strings.NewReader("\n\nn\n")
+	if err := h.app.Execute(context.Background(), []string{"watch"}); err != nil {
+		t.Fatal(err)
+	}
+	if h.plays != 1 || h.mutations != 0 {
+		t.Fatalf("plays=%d mutations=%d", h.plays, h.mutations)
 	}
 }
 func TestAutoCannotMarkOnExit(t *testing.T) {
