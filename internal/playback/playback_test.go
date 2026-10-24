@@ -47,6 +47,7 @@ func TestLaunchWithFakeInstalledPrograms(t *testing.T) {
 		}
 	}
 	t.Setenv("PATH", dir)
+	withMPRISPlugins(t, nil)
 	t.Setenv("ANILIST_TOKEN", "do-not-forward")
 	t.Setenv("ANI_CLI_PLAYER_FLAGS", "bad-flags")
 	var out bytes.Buffer
@@ -60,17 +61,20 @@ func TestLaunchWithFakeInstalledPrograms(t *testing.T) {
 	if report.Args[len(report.Args)-1] != "Sousou" {
 		t.Fatal(report.Args)
 	}
-	found := false
+	playerFlags := 0
 	for _, e := range report.Env {
-		if e == "ANI_CLI_PLAYER_FLAGS=" {
-			found = true
+		if strings.HasPrefix(e, "ANI_CLI_PLAYER_FLAGS=") {
+			playerFlags++
+			if e != "ANI_CLI_PLAYER_FLAGS=--no-config --demuxer=lavf --terminal=yes" {
+				t.Fatalf("unexpected player flags: %q", e)
+			}
 		}
 		if strings.Contains(e, "do-not-forward") || strings.Contains(e, "bad-flags") {
 			t.Fatal("unsafe environment")
 		}
 	}
-	if !found {
-		t.Fatal("missing explicit player flags")
+	if playerFlags != 1 {
+		t.Fatalf("want exactly one player flags setting, got %d", playerFlags)
 	}
 	if err := Check(context.Background(), filepath.Join(dir, "ani-cli-old")); err == nil {
 		t.Fatal("unsupported flags accepted")
@@ -169,5 +173,39 @@ func TestUnsafeExecutableAndEnvironment(t *testing.T) {
 				t.Fatal(v)
 			}
 		}
+	}
+}
+
+func withMPRISPlugins(t *testing.T, paths []string) {
+	old := mprisPlugins
+	mprisPlugins = paths
+	t.Cleanup(func() { mprisPlugins = old })
+}
+
+func TestMPRISPlugin(t *testing.T) {
+	dir := t.TempDir()
+	plugin := filepath.Join(dir, "mpris.so")
+	if err := os.WriteFile(plugin, []byte("so"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	spaced := filepath.Join(dir, "with space.so")
+	if err := os.WriteFile(spaced, []byte("so"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	writable := filepath.Join(dir, "writable.so")
+	if err := os.WriteFile(writable, []byte("so"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(writable, 0666); err != nil {
+		t.Fatal(err)
+	}
+
+	withMPRISPlugins(t, []string{filepath.Join(dir, "missing.so"), spaced, writable, plugin})
+	if got := MPRISPlugin(); got != plugin {
+		t.Fatalf("want %q, got %q", plugin, got)
+	}
+	withMPRISPlugins(t, []string{spaced, writable})
+	if got := MPRISPlugin(); got != "" {
+		t.Fatalf("unsafe plugin accepted: %q", got)
 	}
 }

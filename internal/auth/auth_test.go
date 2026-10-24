@@ -65,8 +65,14 @@ func TestOAuthURLAndPage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if u.Query().Get("state") != r.state || u.Query().Get("response_type") != "token" || u.Query().Get("redirect_uri") != RedirectURI {
+	if u.Scheme != "https" || u.Host != "anilist.co" || u.Path != "/api/v2/oauth/authorize" {
+		t.Fatal("incorrect authorization endpoint")
+	}
+	if u.Query().Get("client_id") != "123" || u.Query().Get("state") != r.state || u.Query().Get("response_type") != "token" {
 		t.Fatal(u)
+	}
+	if u.Query().Has("redirect_uri") {
+		t.Fatal("implicit flow must use the redirect registered in AniList settings")
 	}
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("GET", RedirectURI, nil))

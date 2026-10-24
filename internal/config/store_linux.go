@@ -188,7 +188,7 @@ func (s *Store) Lock() (func(), error) {
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		f.Close()
-		return nil, errors.New("another ani-sync command is running")
+		return nil, errors.New("another ani-sync command is running; finish or cancel it in its original terminal (check 'jobs -l' for a suspended command)")
 	}
 	return func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN); _ = f.Close() }, nil
 }

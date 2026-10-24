@@ -48,6 +48,58 @@ func TestPagination(t *testing.T) {
 	}
 }
 
+func TestListStatusFilters(t *testing.T) {
+	statuses := []Status{Current, Planning, Completed, Paused, Dropped, Repeating}
+	for _, filter := range append([]Status{""}, statuses...) {
+		name := string(filter)
+		if name == "" {
+			name = "all statuses"
+		}
+		t.Run(name, func(t *testing.T) {
+			want := statuses
+			if filter != "" {
+				want = []Status{filter}
+			}
+			calls := 0
+			c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				var body request[struct {
+					Page   int
+					Status json.RawMessage
+				}]
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Error(err)
+					w.WriteHeader(400)
+					return
+				}
+				if filter == "" {
+					if len(body.Variables.Status) != 0 || strings.Contains(body.Query, "$status") || strings.Contains(body.Query, "status:") {
+						t.Error("unfiltered request contains a status filter")
+					}
+				} else if string(body.Variables.Status) != fmt.Sprintf("%q", filter) || !strings.Contains(body.Query, "status:$status") || !strings.Contains(body.Query, "$status:MediaListStatus") {
+					t.Error("missing or incorrect status filter")
+				}
+				page := body.Variables.Page
+				if page != calls || page < 1 || page > len(want) {
+					t.Errorf("unexpected page %d", page)
+					w.WriteHeader(400)
+					return
+				}
+				fmt.Fprintf(w, `{"data":{"Page":{"pageInfo":{"hasNextPage":%t},"mediaList":[{"id":%d,"progress":0,"status":%q,"media":{"id":%d}}]}}}`, page < len(want), page, want[page-1], page)
+			})
+			entries, err := c.List(context.Background(), 42, filter)
+			if err != nil || len(entries) != len(want) || calls != len(want) {
+				t.Fatalf("entries=%v calls=%d err=%v", entries, calls, err)
+			}
+			for i, entry := range entries {
+				if entry.Status != want[i] {
+					t.Fatalf("entry %d: status=%s want=%s", i, entry.Status, want[i])
+				}
+			}
+		})
+	}
+}
+
 func TestAPIErrors(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

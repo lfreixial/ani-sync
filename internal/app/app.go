@@ -29,7 +29,7 @@ Commands:
   status                        Verify login and show pending updates
   list [--status STATUS]         Show all lists or one AniList status
   watching | completed | planning
-  search [--page N] "title"      Search the AniList catalog
+  search [--page N] ["title"]    Search the catalog; prompt if title omitted
   watch [flags] ["title"]        Select from your AniList list and play
   continue [flags]               Continue the last selected anime
   progress                      Show watchlist progress
@@ -231,9 +231,18 @@ func (a *App) Execute(ctx context.Context, args []string) error {
 		fmt.Fprintln(a.UI.Out, "Local credentials and pending updates removed. Revoke the application in AniList settings to invalidate its token remotely.")
 		return nil
 	case "search":
-		query := strings.Join(positionals, " ")
+		query := strings.TrimSpace(strings.Join(positionals, " "))
+		if query == "" && a.UI.Interactive {
+			query, err = a.UI.Prompt(ctx, "Anime title to search", "")
+			if err != nil {
+				return err
+			}
+		}
+		if query == "" {
+			return errors.New(`search requires an anime title; use: ani-sync search "Frieren"`)
+		}
 		if err := matching.ValidateQuery(query); err != nil {
-			return err
+			return fmt.Errorf("invalid search title: %w", err)
 		}
 		media, next, err := a.newClient("").Search(ctx, query, o.page)
 		if err != nil {

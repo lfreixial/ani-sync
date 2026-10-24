@@ -89,6 +89,7 @@ Final checks on 2026-10-24:
 | `ani-sync --help`, configuration write and `doctor` | Passed with project-local XDG paths |
 | Fake ani-cli launch, unsupported flags, arguments and child environment | Passed |
 | Live fzf PTY smoke | Could not run: sandbox denied controlling-terminal access |
+| PTY terminal restoration with fake children | Passed after terminal fix: normal exit, failure and cancellation |
 | `govulncheck ./...` | Could not run: authorized tool installation blocked by network sandbox |
 
 The dependency review (`go list -m all`) reports only the main module. No

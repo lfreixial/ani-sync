@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -37,6 +38,33 @@ func TrustedPath(name string) (string, error) {
 		return "", err
 	}
 	return path, nil
+}
+
+// mprisPlugins are where distributions install the mpv-mpris plugin.
+var mprisPlugins = []string{
+	"/usr/lib/mpv-mpris/mpris.so",
+	"/usr/lib/x86_64-linux-gnu/mpv-mpris/mpris.so",
+	"/usr/lib/aarch64-linux-gnu/mpv-mpris/mpris.so",
+	"/usr/lib64/mpv-mpris/mpris.so",
+	"/etc/mpv/scripts/mpris.so",
+}
+
+// MPRISPlugin returns the installed mpv-mpris plugin, or "" if there is none.
+// It is held to the same ownership rules as executables, since mpv runs it.
+func MPRISPlugin() string {
+	for _, p := range mprisPlugins {
+		p, err := filepath.EvalSymlinks(p)
+		// ani-cli splits player flags on whitespace.
+		if err != nil || strings.ContainsAny(p, " \t\r\n*?[") {
+			continue
+		}
+		st, err := os.Stat(p)
+		if err != nil || !st.Mode().IsRegular() || checkOwnership(p) != nil {
+			continue
+		}
+		return p
+	}
+	return ""
 }
 
 func checkOwnership(path string) error {
@@ -96,7 +124,40 @@ func IsTerminal(f *os.File) bool {
 	return err == 0
 }
 
-func Run(ctx context.Context, path string, args, env []string, streams Streams) error {
+// restoreForeground runs after the child has exited. The caller is still a
+// background process group, so TIOCSPGRP requires SIGTTOU to be blocked. Block
+// only the calling OS thread during the ioctl, preserving process-wide signal
+// handling and the signal mask inherited by subsequent children.
+func restoreForeground(tty *os.File, group int32) (result error) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	// Linux rt_sigprocmask uses an 8-byte kernel signal set, not libc's sigset_t.
+	const sigBlock, sigSetMask = 0, 2
+	mask := uint64(1) << (uint(syscall.SIGTTOU) - 1)
+	var previous uint64
+	_, _, errno := syscall.RawSyscall6(syscall.SYS_RT_SIGPROCMASK, sigBlock, uintptr(unsafe.Pointer(&mask)), uintptr(unsafe.Pointer(&previous)), unsafe.Sizeof(mask), 0, 0)
+	if errno != 0 {
+		return fmt.Errorf("block terminal job-control signal: %w", errno)
+	}
+	defer func() {
+		_, _, errno := syscall.RawSyscall6(syscall.SYS_RT_SIGPROCMASK, sigSetMask, uintptr(unsafe.Pointer(&previous)), 0, unsafe.Sizeof(previous), 0, 0)
+		if errno != 0 {
+			result = errors.Join(result, fmt.Errorf("restore terminal signal mask: %w", errno))
+		}
+	}()
+	for {
+		_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tty.Fd(), syscall.TIOCSPGRP, uintptr(unsafe.Pointer(&group)))
+		if errno == syscall.EINTR {
+			continue
+		}
+		if errno != 0 {
+			return fmt.Errorf("restore terminal foreground: %w", errno)
+		}
+		return nil
+	}
+}
+
+func Run(ctx context.Context, path string, args, env []string, streams Streams) (result error) {
 	validated, err := TrustedPath(path)
 	if err != nil {
 		return err
@@ -109,7 +170,6 @@ func Run(ctx context.Context, path string, args, env []string, streams Streams) 
 	// Keep terminal input working while isolating cancellation of the process tree.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	// A separate process group needs the foreground terminal while interacting.
-	// Go ignores SIGTTOU, allowing the parent to restore its group after Wait.
 	if f, ok := streams.Err.(*os.File); ok && IsTerminal(f) {
 		tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 		if err != nil {
@@ -124,7 +184,7 @@ func Run(ctx context.Context, path string, args, env []string, streams Streams) 
 		cmd.SysProcAttr.Foreground = true
 		cmd.SysProcAttr.Ctty = int(tty.Fd())
 		defer func() {
-			syscall.Syscall(syscall.SYS_IOCTL, tty.Fd(), syscall.TIOCSPGRP, uintptr(unsafe.Pointer(&previous)))
+			result = errors.Join(result, restoreForeground(tty, previous))
 		}()
 	}
 	cmd.Cancel = func() error {

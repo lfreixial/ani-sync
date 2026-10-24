@@ -37,6 +37,8 @@ ani-sync ./cmd/ani-sync` for the direct equivalent.
 1. Open [AniList developer settings](https://anilist.co/settings/developer) in
    your browser and create an application.
 2. Set its redirect URL **exactly** to `http://127.0.0.1:8765/callback`.
+   AniList uses this saved setting; ani-sync does not send a redirect override
+   in the implicit authorization URL.
 3. Copy its public **client ID**, then run:
 
    ```sh
@@ -83,6 +85,15 @@ version and episode numbering. After completion, you can save the source search
 alias. A saved alias is only a query, **not a stable source ID**; source selection
 is deliberately never replaced with a guessed result index.
 
+Playback uses your installed mpv with `--no-config --demuxer=lavf --terminal=yes`.
+This bypasses custom mpv configuration and scripts, keeps diagnostics visible,
+and handles HLS through the FFmpeg demuxer so an episode plays as continuous
+media instead of hundreds of short playlist segments. Your mpv configuration
+files are not modified. Close the player to return to the completion prompt.
+If mpv-mpris is already installed in a supported system location and passes
+ownership and permission checks, ani-sync loads it explicitly for desktop media
+controls. Other mpv scripts remain disabled.
+
 Confirmed changes are queued durably before sending to AniList. `sync` retries
 pending changes after rereading server progress. It skips already-applied updates
 and never lowers progress implicitly. A gap requires confirmation that earlier
@@ -101,7 +112,7 @@ Place flags **before** positional titles. `ani-sync --help` prints a short refer
 | `status [--json]` | Verify current account and count its pending updates |
 | `list [--status STATUS] [--json]` | All six statuses, or CURRENT / PLANNING / COMPLETED / PAUSED / DROPPED / REPEATING |
 | `watching`, `completed`, `planning` | Filtered lists; support `--json` |
-| `search [--page N] [--json] "title"` | Public AniList catalog; 50 results/page; no login required |
+| `search [--page N] [--json] ["title"]` | Public AniList catalog; prompts for a missing title in a terminal; JSON/scripts require a title; 50 results/page; no login required |
 | `watch [--id ID] [--episode N] [--alias TITLE] ["title"]` | Select from your list and play one episode |
 | `continue [--episode N] [--alias TITLE]` | Last successfully played anime for this account; suggests next unwatched episode |
 | `progress [--json]` | Current server watchlist progress |
@@ -177,8 +188,17 @@ or environment. See the [complete network inventory](docs/SECURITY.md#network-co
 
 ## Troubleshooting
 
+- **Another command is running:** finish or cancel the first command in its
+  original terminal. If `jobs -l` shows a suspended ani-sync job, resume it with
+  `fg %N` (replace N with its job number), then press Ctrl+C to cancel. Rebuild
+  and reinstall if using a version that suspends after the anime selector.
+  Do not delete the lock file: the lock is released when the process exits.
 - **Not logged in / unauthorized:** run `login`; check client ID and exact redirect
   URI. A denied, expired or revoked token is never refreshed silently.
+- **Browser reports `unsupported_grant_type`:** rebuild and reinstall the current
+  version, cancel the previous login, then run `login` again and open the complete
+  new URL. It must use `/api/v2/oauth/authorize` with `response_type=token` and no
+  `redirect_uri` override. Check the saved redirect in AniList developer settings.
 - **Callback fails:** use a local browser, allow loopback, and free port 8765.
   State, origin and host must match. Never work around failure by pasting a token.
 - **No list match:** try Romaji/native titles or `watch --id ID`; add missing anime
