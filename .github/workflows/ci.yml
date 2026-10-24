@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 8 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Test, race, vet and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.x'
+          check-latest: true
+          cache: false
+      - run: make test race lint build
+      - name: Check CLI entrypoint
+        run: ./ani-sync --help
+      - name: Ensure checks leave tracked files unchanged
+        run: git diff --exit-code
+
+  vulnerabilities:
+    name: Go vulnerability scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.x'
+          check-latest: true
+          cache: false
+      - name: Install pinned official vulnerability checker
+        run: |
+          mkdir -p .tools
+          GOBIN="$PWD/.tools" go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+      - run: make vuln

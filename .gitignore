@@ -1,0 +1,17 @@
+/ani-sync
+/.cache/
+/.tools/
+/coverage.out
+/.release/
+/dist/
+/.agents/
+/.codex/
+/.aws/
+.env
+.env.*
+credentials.json
+pending.json
+mappings.json
+last.json
+*.pem
+*.key
