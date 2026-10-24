@@ -6,6 +6,8 @@
 - Authorization URLs use AniList's registered redirect instead of an explicit
   override, matching the documented implicit flow.
 - Typed GraphQL watchlists, catalog search, pagination and bounded rate retries.
+- Bare `search` prompts for an anime title in a terminal; scripts receive a
+  usage example when the title is missing.
 - Unfiltered watchlists omit the status argument instead of sending null, fixing
   empty selections in `watch` when status-specific lists contain anime.
 - Interactive selection and ani-cli foreground playback with confirmed aliases.

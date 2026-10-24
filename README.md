@@ -109,7 +109,7 @@ Place flags **before** positional titles. `ani-sync --help` prints a short refer
 | `status [--json]` | Verify current account and count its pending updates |
 | `list [--status STATUS] [--json]` | All six statuses, or CURRENT / PLANNING / COMPLETED / PAUSED / DROPPED / REPEATING |
 | `watching`, `completed`, `planning` | Filtered lists; support `--json` |
-| `search [--page N] [--json] "title"` | Public AniList catalog; 50 results/page; no login required |
+| `search [--page N] [--json] ["title"]` | Public AniList catalog; prompts for a missing title in a terminal; JSON/scripts require a title; 50 results/page; no login required |
 | `watch [--id ID] [--episode N] [--alias TITLE] ["title"]` | Select from your list and play one episode |
 | `continue [--episode N] [--alias TITLE]` | Last successfully played anime for this account; suggests next unwatched episode |
 | `progress [--json]` | Current server watchlist progress |

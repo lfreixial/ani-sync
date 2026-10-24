@@ -35,6 +35,7 @@ type harness struct {
 	out                       *bytes.Buffer
 	watched, mutations, plays int
 	playErr                   error
+	searches                  []string
 }
 
 func newHarness(t *testing.T) *harness {
@@ -54,6 +55,7 @@ func newHarness(t *testing.T) *harness {
 			Variables struct {
 				Progress int
 				Status   json.RawMessage
+				Search   string
 			}
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -75,6 +77,10 @@ func newHarness(t *testing.T) *harness {
 				}
 				fmt.Fprintf(w, `{"data":{"Page":{"pageInfo":{"hasNextPage":false},"mediaList":[{"id":7,"progress":%d,"status":"CURRENT","media":{"id":9,"title":{"english":"Frieren","romaji":"Sousou"},"episodes":12}}]}}}`, h.watched)
 			} else {
+				h.searches = append(h.searches, req.Variables.Search)
+				if r.Header.Get("Authorization") != "" {
+					t.Error("public search must not send credentials")
+				}
 				fmt.Fprint(w, `{"data":{"Page":{"pageInfo":{"hasNextPage":false},"media":[{"id":9,"title":{"english":"Frieren"},"episodes":12}]}}}`)
 			}
 		case strings.Contains(req.Query, "MediaList(userId"):
@@ -195,6 +201,42 @@ func TestReadCommands(t *testing.T) {
 	}
 	if command, _, _, err := parse([]string{"doctor"}); err != nil || command != "doctor" {
 		t.Fatal(command, err)
+	}
+}
+
+func TestSearchTitleInput(t *testing.T) {
+	for _, tc := range []struct {
+		name, input string
+		args        []string
+		interactive bool
+		prompt      bool
+		wantError   bool
+	}{
+		{"prompt", "Frieren\n", []string{"search"}, true, true, false},
+		{"trim prompt", "  Frieren  \n", []string{"search"}, true, true, false},
+		{"explicit title", "", []string{"search", "Frieren"}, true, false, false},
+		{"script title", "", []string{"search", "--non-interactive", "Frieren"}, false, false, false},
+		{"empty prompt", "\n", []string{"search"}, true, true, true},
+		{"missing script title", "", []string{"search"}, false, false, true},
+		{"non-interactive flag", "", []string{"search", "--non-interactive"}, true, false, true},
+		{"json missing title", "", []string{"search", "--json"}, true, false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t)
+			h.app.UI.Interactive = tc.interactive
+			h.app.UI.In = strings.NewReader(tc.input)
+			err := h.app.Execute(context.Background(), tc.args)
+			if tc.wantError {
+				if err == nil || !strings.Contains(err.Error(), `ani-sync search "Frieren"`) || len(h.searches) != 0 {
+					t.Fatalf("error=%v searches=%v", err, h.searches)
+				}
+			} else if err != nil || len(h.searches) != 1 || h.searches[0] != "Frieren" || !strings.Contains(h.out.String(), "Frieren") {
+				t.Fatalf("error=%v searches=%v output=%q", err, h.searches, h.out.String())
+			}
+			if strings.Contains(h.out.String(), "Anime title to search") != tc.prompt {
+				t.Fatalf("unexpected prompt output: %q", h.out.String())
+			}
+		})
 	}
 }
 
