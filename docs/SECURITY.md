@@ -76,6 +76,9 @@ does not claim to sandbox other applications with the same UID.
   validated PATH directories. No token, ANI_CLI override, FZF_DEFAULT_OPTS,
   loader hook or shell startup hook is inherited. ani-sync supplies its own
   mpv/menu settings and disables ani-cli's syslog playback logging.
+- mpv runs with fixed `--no-config --demuxer=lavf --terminal=yes` options.
+  Default system/user mpv configuration and scripts are bypassed; media is
+  handled by the FFmpeg demuxer and player diagnostics stay visible.
 - Children inherit ordinary stdin/out/err only, not token or lock descriptors.
   Ctrl-C and cancellation prevent progress updates. Context cancellation kills
   the process group; foreground terminal ownership is restored after subprocess

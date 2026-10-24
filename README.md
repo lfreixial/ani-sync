@@ -85,6 +85,12 @@ version and episode numbering. After completion, you can save the source search
 alias. A saved alias is only a query, **not a stable source ID**; source selection
 is deliberately never replaced with a guessed result index.
 
+Playback uses your installed mpv with `--no-config --demuxer=lavf --terminal=yes`.
+This bypasses custom mpv configuration and scripts, keeps diagnostics visible,
+and handles HLS through the FFmpeg demuxer so an episode plays as continuous
+media instead of hundreds of short playlist segments. Your mpv configuration
+files are not modified. Close the player to return to the completion prompt.
+
 Confirmed changes are queued durably before sending to AniList. `sync` retries
 pending changes after rereading server progress. It skips already-applied updates
 and never lowers progress implicitly. A gap requires confirmation that earlier

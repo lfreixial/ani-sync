@@ -59,6 +59,9 @@ func Launch(ctx context.Context, query string, episode int, streams Streams) err
 	if strings.ContainsAny(mpv, " \t\r\n*?[") {
 		return errors.New("mpv path contains characters unsafe for ani-cli player selection")
 	}
-	env := append(Environment(), "ANI_CLI_PLAYER="+mpv, "ANI_CLI_PLAYER_FLAGS=", "ANI_CLI_MENU=fzf", "ANI_CLI_MENU_FLAGS=", "ANI_CLI_LOG=0", "ANI_CLI_SKIP_INTRO=0", "ANI_CLI_DEFAULT_SOURCE=search")
+	// Keep HLS manifests in the media demuxer instead of expanding their segments
+	// as playlist entries. Use a predictable mpv configuration with visible errors.
+	// These are fixed flags; no user-supplied shell text is forwarded to ani-cli.
+	env := append(Environment(), "ANI_CLI_PLAYER="+mpv, "ANI_CLI_PLAYER_FLAGS=--no-config --demuxer=lavf --terminal=yes", "ANI_CLI_MENU=fzf", "ANI_CLI_MENU_FLAGS=", "ANI_CLI_LOG=0", "ANI_CLI_SKIP_INTRO=0", "ANI_CLI_DEFAULT_SOURCE=search")
 	return Run(ctx, ani, args, env, streams)
 }

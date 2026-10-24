@@ -60,17 +60,20 @@ func TestLaunchWithFakeInstalledPrograms(t *testing.T) {
 	if report.Args[len(report.Args)-1] != "Sousou" {
 		t.Fatal(report.Args)
 	}
-	found := false
+	playerFlags := 0
 	for _, e := range report.Env {
-		if e == "ANI_CLI_PLAYER_FLAGS=" {
-			found = true
+		if strings.HasPrefix(e, "ANI_CLI_PLAYER_FLAGS=") {
+			playerFlags++
+			if e != "ANI_CLI_PLAYER_FLAGS=--no-config --demuxer=lavf --terminal=yes" {
+				t.Fatalf("unexpected player flags: %q", e)
+			}
 		}
 		if strings.Contains(e, "do-not-forward") || strings.Contains(e, "bad-flags") {
 			t.Fatal("unsafe environment")
 		}
 	}
-	if !found {
-		t.Fatal("missing explicit player flags")
+	if playerFlags != 1 {
+		t.Fatalf("want exactly one player flags setting, got %d", playerFlags)
 	}
 	if err := Check(context.Background(), filepath.Join(dir, "ani-cli-old")); err == nil {
 		t.Fatal("unsupported flags accepted")

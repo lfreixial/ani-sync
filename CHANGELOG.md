@@ -9,6 +9,8 @@
 - Unfiltered watchlists omit the status argument instead of sending null, fixing
   empty selections in `watch` when status-specific lists contain anime.
 - Interactive selection and ani-cli foreground playback with confirmed aliases.
+- Use a clean mpv configuration and the FFmpeg demuxer to play HLS episodes as
+  continuous media instead of a playlist of short segments.
 - Restore terminal ownership after child processes without SIGTTOU suspension;
   cover success, failure and cancellation with pseudo-terminal regression tests.
 - Explicit completion confirmation and durable, account-bound progress updates.
