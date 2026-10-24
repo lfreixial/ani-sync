@@ -92,7 +92,8 @@ media instead of hundreds of short playlist segments. Your mpv configuration
 files are not modified. Close the player to return to the completion prompt.
 If mpv-mpris is already installed in a supported system location and passes
 ownership and permission checks, ani-sync loads it explicitly for desktop media
-controls. Other mpv scripts remain disabled.
+controls. Other mpv scripts remain disabled. The anime's AniList cover is then
+shown as the artwork; covers are cached in `~/.cache/ani-sync/covers/`.
 
 Confirmed changes are queued durably before sending to AniList. `sync` retries
 pending changes after rereading server progress. It skips already-applied updates

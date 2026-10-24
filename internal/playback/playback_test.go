@@ -51,7 +51,7 @@ func TestLaunchWithFakeInstalledPrograms(t *testing.T) {
 	t.Setenv("ANILIST_TOKEN", "do-not-forward")
 	t.Setenv("ANI_CLI_PLAYER_FLAGS", "bad-flags")
 	var out bytes.Buffer
-	if err := Launch(context.Background(), "Sousou", 3, Streams{Out: &out, Err: io.Discard}); err != nil {
+	if err := Launch(context.Background(), "Sousou", 3, "", Streams{Out: &out, Err: io.Discard}); err != nil {
 		t.Fatal(err)
 	}
 	var report struct{ Args, Env []string }

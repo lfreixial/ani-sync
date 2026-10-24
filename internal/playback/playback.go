@@ -12,6 +12,10 @@ import (
 	"github.com/lfreixial/ani-sync/internal/progress"
 )
 
+// unsafePathChars cannot appear in paths passed through ani-cli, which splits
+// player flags on whitespace and selects players by glob.
+const unsafePathChars = " \t\r\n*?["
+
 const AutoFallback = "Automatic sync is unavailable: ani-cli has no documented source/episode identity handoff. Manual completion confirmation is required."
 
 func Arguments(query string, episode int) ([]string, error) {
@@ -40,7 +44,9 @@ func Check(ctx context.Context, path string) error {
 	return nil
 }
 
-func Launch(ctx context.Context, query string, episode int, streams Streams) error {
+// Launch plays an episode through ani-cli. cover is an optional local image that
+// media controls show as the artwork (see Cover).
+func Launch(ctx context.Context, query string, episode int, cover string, streams Streams) error {
 	args, err := Arguments(query, episode)
 	if err != nil {
 		return err
@@ -56,7 +62,7 @@ func Launch(ctx context.Context, query string, episode int, streams Streams) err
 	if err != nil {
 		return err
 	}
-	if strings.ContainsAny(mpv, " \t\r\n*?[") {
+	if strings.ContainsAny(mpv, unsafePathChars) {
 		return errors.New("mpv path contains characters unsafe for ani-cli player selection")
 	}
 	// Keep HLS manifests in the media demuxer instead of expanding their segments
@@ -67,6 +73,11 @@ func Launch(ctx context.Context, query string, episode int, streams Streams) err
 	// media controls can then see and control what is playing.
 	if plugin := MPRISPlugin(); plugin != "" {
 		flags += " --script=" + plugin
+		// The cover is attached as an extra image track; keep the episode's own
+		// video selected instead of the still image.
+		if cover != "" && !strings.ContainsAny(cover, unsafePathChars) && regularFile(cover) {
+			flags += " --vid=1 --cover-art-files=" + cover
+		}
 	}
 	env := append(Environment(), "ANI_CLI_PLAYER="+mpv, "ANI_CLI_PLAYER_FLAGS="+flags, "ANI_CLI_MENU=fzf", "ANI_CLI_MENU_FLAGS=", "ANI_CLI_LOG=0", "ANI_CLI_SKIP_INTRO=0", "ANI_CLI_DEFAULT_SOURCE=search")
 	return Run(ctx, ani, args, env, streams)

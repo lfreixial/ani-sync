@@ -55,7 +55,7 @@ func MPRISPlugin() string {
 	for _, p := range mprisPlugins {
 		p, err := filepath.EvalSymlinks(p)
 		// ani-cli splits player flags on whitespace.
-		if err != nil || strings.ContainsAny(p, " \t\r\n*?[") {
+		if err != nil || strings.ContainsAny(p, unsafePathChars) {
 			continue
 		}
 		st, err := os.Stat(p)

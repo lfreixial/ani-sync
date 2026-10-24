@@ -60,7 +60,7 @@ type App struct {
 	Store     *config.Store
 	Config    config.Config
 	NewClient func(string) *anilist.Client
-	Play      func(context.Context, string, int, playback.Streams) error
+	Play      func(context.Context, string, int, string, playback.Streams) error
 }
 type options struct {
 	json, nonInteractive, yes, auto, confirmMapping, confirmCompleted, confirmGap, allowDecrease, discard bool
@@ -468,7 +468,8 @@ func (a *App) watch(ctx context.Context, c *anilist.Client, user anilist.User, s
 	if play == nil {
 		play = playback.Launch
 	}
-	err = play(ctx, alias, episode, playback.Streams{In: a.UI.In, Out: a.UI.Out, Err: a.UI.Err})
+	cover := playback.Cover(ctx, entry.Media.ID, entry.Media.CoverImage.Large)
+	err = play(ctx, alias, episode, cover, playback.Streams{In: a.UI.In, Out: a.UI.Out, Err: a.UI.Err})
 	if err != nil {
 		return fmt.Errorf("playback ended unsuccessfully; progress unchanged: %w", err)
 	}

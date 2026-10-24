@@ -92,7 +92,7 @@ func newHarness(t *testing.T) *harness {
 	}))
 	h.app = &App{Store: s, Config: config.Config{TitleLanguage: "english"}, UI: &tui.UI{Out: h.out, Err: h.out, In: strings.NewReader("")}, NewClient: func(token string) *anilist.Client {
 		return anilist.WithTransport(token, rewriteTransport{client.Transport})
-	}, Play: func(_ context.Context, q string, episode int, _ playback.Streams) error {
+	}, Play: func(_ context.Context, q string, episode int, _ string, _ playback.Streams) error {
 		h.plays++
 		if q != "Sousou" || episode != 3 {
 			t.Errorf("play %q %d", q, episode)
